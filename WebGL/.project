@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>WebGL</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>com.rockstarapps.jslint.JsLintBuilder</name>
+			<arguments>
+				<dictionary>
+					<key>buildAll</key>
+					<value>false</value>
+				</dictionary>
+				<dictionary>
+					<key>external_defines</key>
+					<value></value>
+				</dictionary>
+				<dictionary>
+					<key>properties</key>
+					<value>params = {passfail: false,debug: false,undef: true,white: false,evil: false,nomen: true,browser: false,cap: false,eqeqeq: true,widget: false,on: false,plusplus: false,sidebar: false,fragment: false,bitwise: false,rhino: false,laxbreak: false,regexp: false,safe: false,forin: false,onevar: false,adsafe: false,sub: false,strict: false,css: false,newcap: false,maxerrors:50,indent:4};</value>
+				</dictionary>
+				<dictionary>
+					<key>selection</key>
+					<value>main.js</value>
+				</dictionary>
+			</arguments>
+		</buildCommand>
+		<buildCommand>
+			<name>org.eclipse.wst.jsdt.core.javascriptValidator</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.eclipse.wst.jsdt.core.jsNature</nature>
+	</natures>
+</projectDescription>
