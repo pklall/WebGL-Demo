@@ -7,25 +7,27 @@
 ///
 /// Utility Functions
 ///
-
 /**
  * Removes the first occurence of value from an array (if it exists).
  */
 Array.prototype.remove = function(value) {
 	var index = this.indexOf(value);
-	if(index < 0)
+	if (index < 0) {
 		return this;
+	}
 	var before = this.slice(0, index);
 	var after = this.slice(index + 1);
 	this.length = index;
 	return before.concat(after);
-}
+};
 
 /**
  * Calls func every timedelta milliseconds indefinitely.
  * 
- * @param func The function to call
- * @param timedelta The number of milliseconds to wait between calls
+ * @param func
+ *            The function to call
+ * @param timedelta
+ *            The number of milliseconds to wait between calls
  */
 function repeat(func, timedelta) {
 	function wrapper() {
@@ -44,29 +46,97 @@ function repeat(func, timedelta) {
  */
 function GLHelper(canvas) {
 	var gl = null;
-	gl = canvas.getContext("experimental-webgl");
-	gl.viewportWidth = canvas.width;
-	gl.viewportHeight = canvas.height;
-	gl.viewport(0, 0, canvas.width, canvas.height);
-	if (!gl) {
-		throw "Error initializing WebGL!  You must use a WebGL-compatible browser.";
+	function init() {
+		gl = canvas.getContext("experimental-webgl");
+		gl.viewportWidth = canvas.width;
+		gl.viewportHeight = canvas.height;
+		gl.viewport(0, 0, canvas.width, canvas.height);
+		if (!gl) {
+			throw "Error initializing WebGL!  You must use a WebGL-compatible browser.";
+		}
+
+		// clear the canvas to black
+		gl.clearColor(0.0, 0.0, 0.0, 1.0);
+		gl.clear(gl.COLOR_BUFFER_BIT);
+	}
+	init();
+
+	var DEFAULT_MAT_PROG;
+	function initDefaultShaders() {
+		DEFAULT_MAT_PROG = Program(
+				// vertex shader
+				"\
+			attribute vec3 vertex_in; \
+			attribute vec3 normal_in; \
+			attribute vec2 texcoord_in; \
+			uniform mat4 mvp; \
+			uniform mat4 model; \
+			varying vec3 normal; \
+			varying vec2 texcoord; \
+			void main() { \
+				gl_Position = mvp * vec4(vertex_in, 1.0); \
+				normal = normalize(model * vec4(normal_in, 0.0)).xyz; \
+				texcoord = texcoord_in; \
+			}",
+				// fragment shader
+				"\
+			precision highp float; \
+			uniform sampler2D color; \
+			varying vec3 normal; \
+			varying vec2 texcoord; \
+			void main() { \
+				gl_FragData[0] = texture2D(color, vec2(texcoord.s, texcoord.t)); \
+			}");
 	}
 
-	// clear the canvas to black
-	gl.clearColor(0.0, 0.0, 0.0, 1.0);
-	gl.clear(gl.COLOR_BUFFER_BIT);
+	var TextureLibrary = {};
+	function RegisterTexture(name, image) {
+		var texture = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, texture);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
+				image);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
+				gl.LINEAR_MIPMAP_NEAREST);
+		gl.generateMipmap(gl.TEXTURE_2D);
+		gl.bindTexture(gl.TEXTURE_2D, null);
+		TextureLibrary[name] = texture;
+	}
 
+	var MTLLibrary = {};
+	function Material(program, parameters) {
+		
+	}
+	
 	/**
-	 * Loads the provided MTL-formatted material library into a MaterialLibrary
-	 * object.
+	 * Loads the provided MTL-formatted material library into the material
+	 * library
 	 * 
 	 * @param source
 	 *            The .mtl source for the material library
 	 */
-	function MaterialLibrary(source) {
-		var mats = {};
+	function RegisterMaterials(source) {
+		var lines = source.split("\n");
 
-		return mats;
+		var curMTLName = "";
+		var params = [];
+		lines.forEach(function(line) {
+			if (line.indexOf("newmtl") === 0) {
+				if (curMTLName.length > 0) {
+					MTLLibrary[curMTLName] = {
+						kd : kd,
+
+					};
+				}
+				curMTLName = line.split(" ")[1];
+			}
+			if (line.indexOf("Kd") === 0) {
+				kd = line.split(" ").slice(1);
+			}
+			if (line.indexOf("Kd") === 0) {
+				kd = line.split(" ").slice(1);
+			}
+		});
 	}
 
 	/**
@@ -81,7 +151,7 @@ function GLHelper(canvas) {
 		 * appropriate shaders MUST be specified before calling this function.
 		 * 
 		 */
-		function rasterize() {
+		function render() {
 			gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
 			gl.enableVertexAttribArray(0);
 			gl.enableVertexAttribArray(1);
@@ -93,8 +163,13 @@ function GLHelper(canvas) {
 			gl.drawElements(gl.TRIANGLES, numFaces, gl.UNSIGNED_SHORT, 0);
 		}
 
-		var mesh = {};
-		mesh.rasterize = rasterize;
+		function renderMaterial() {
+			
+		}
+
+		var mesh = {
+			render : render
+		};
 		return mesh;
 	}
 
@@ -113,14 +188,14 @@ function GLHelper(canvas) {
 	function Model(meshes) {
 		var transformation = mat4.create();
 
-		function rasterize() {
+		function render() {
 			meshes.forEach(function(mesh) {
-				mesh.rasterize(transformation);
+				mesh.render(transformation);
 			});
 		}
 
 		return {
-			rasterize : rasterize
+			render : render
 		};
 	}
 
@@ -173,19 +248,19 @@ function GLHelper(canvas) {
 				return parseFloat(coord);
 			});
 			vertexList.push(vertex);
-		}
+		};
 		var addNormal = function(line) {
 			var normal = line.split(" ").slice(1).map(function(coord) {
 				return parseFloat(coord);
 			});
 			normalList.push(normal);
-		}
+		};
 		var addTextureCoord = function(line) {
 			var coords = line.split(" ").slice(1).map(function(coord) {
 				return parseFloat(coord);
 			});
 			textureList.push(coords);
-		}
+		};
 
 		var addFace = function(line) {
 			// loop through all verteces, adding to nvtList when a new unique
@@ -222,7 +297,7 @@ function GLHelper(canvas) {
 				// push the vertex index to the index list
 				indexList.push(vntCache[vString] / 8);
 			});
-		}
+		};
 
 		// every time a new material definition is found, pop off all faces
 		// found before now into a new faceGroup
@@ -236,7 +311,7 @@ function GLHelper(canvas) {
 			indexList = [];
 			var matName = line.split(" ")[1];
 			curMat = matLib[matName];
-		}
+		};
 
 		lines.forEach(function(line) {
 			if (line.indexOf("v ") === 0) {
@@ -285,14 +360,10 @@ function GLHelper(canvas) {
 	 * Compiles and links the provided vertex and pixel shaders using the
 	 * mapping provided to specify vertex shader attributes.
 	 * 
-	 * 
 	 * @param vertexSource
 	 *            The source code for the vertex shader.
 	 * @param pixelSource
 	 *            The source code for the pixel shader.
-	 * @param attributeMap
-	 *            A list of [attribute_name, index] pairs to use when binding
-	 *            attribute locations.
 	 * @throws string
 	 *             Throws exception if unable to succesfully compile the given
 	 *             shaders.
@@ -340,8 +411,7 @@ function GLHelper(canvas) {
 
 		return {
 			prog : prog,
-			use : use,
-			setUniform : null
+			use : use
 		};
 	}
 
@@ -354,12 +424,12 @@ function GLHelper(canvas) {
 	function DeferredEffect(vertexSource, pixelSource) {
 		var prog = Program(vertexSource, pixelSource);
 
-		return {}
+		return {};
 	}
 
 	function Camera() {
-		var view;
-		var projection;
+		var view = mat4.identity();
+		var projection = mat4.projection(45, 1, 0.001, 1000);
 
 		function getView() {
 			return view;
@@ -405,7 +475,7 @@ function GLHelper(canvas) {
 			color = vec3.create(c);
 		}
 
-		var light = {
+		return {
 			getColor : getColor,
 			setColor : setColor
 		};
@@ -418,26 +488,34 @@ function GLHelper(canvas) {
 			models.push(model);
 		}
 		function removeModel(model) {
-			var index = models.indexOf(model);
-			var before = models.slice(0, index);
-			var after = models.slice(index + 1);
-			models = before.concat(after);
+			models = models.remove(model);
+		}
+		function addLight(light) {
+			lights.push(light);
+		}
+		function removeLight(light) {
+			lights = lights.remove(light);
 		}
 		var scene = {
 			addModel : addModel,
-			removeModel : removeModel
+			removeModel : removeModel,
+			addLight : addLight,
+			removeLight : removeLight
 		};
 		return scene;
 	}
 
+	init();
+	initDefaultShaders();
 	var GL = {
-		MaterialLibrary : MaterialLibrary,
+		RegisterTexture : RegisterTexture,
+		RegisterMaterials : RegisterMaterials,
 		Model : Model,
 		ModelFromOBJ : ModelFromOBJ,
 		Program : Program,
 		Camera : Camera,
 		Scene : Scene,
 		gl : gl
-	}
+	};
 	return GL;
 }

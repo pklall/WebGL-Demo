@@ -11,10 +11,10 @@
 <script type="text/javascript" src="main.js"></script>
 
 <script type="text/javascript">
-	var scene;
 	var prog;
 	var persp;
 	var modelview;
+	var scene;
 	window.onload = function() {
 		var canvas = document.getElementById("gl");
 
@@ -22,7 +22,7 @@
 		gl = GL.gl;
 
 		var sceneData = document.getElementById("monkey").text;
-		scene = GL.ModelFromOBJ(sceneData, {});
+		var model = GL.ModelFromOBJ(sceneData, {});
 		prog = GL.Program(document.getElementById("vertex_shader").text,
 				document.getElementById("fragment_shader").text);
 		
@@ -84,7 +84,7 @@ void main() {
 	color += vec4(1.0, 1.0, 1.0, 1.0) * 0.10;
 	color = clamp(color, vec4(0.0, 0.0, 0.0, 0.0), vec4(1.0, 1.0, 1.0, 1.0));
 	color.w = 1.0;
-	gl_FragColor = color;
+	gl_FragData[0] = color;
 }
 </script>
 
